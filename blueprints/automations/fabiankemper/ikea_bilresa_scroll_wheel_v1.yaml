@@ -209,7 +209,9 @@ conditions:
       {{ trigger.from_state is defined and 
          trigger.to_state is defined and 
          trigger.from_state.state != trigger.to_state.state and 
-         trigger.to_state.state not in ['unknown', 'unavailable', '', 'none', 'idle'] }}
+         trigger.to_state.state not in ['unknown', 'unavailable', '', 'none', 'idle', '0'] and
+         'stop' not in trigger.to_state.state | string | lower and
+         'release' not in trigger.to_state.state | string | lower }}
 actions:
   - choose:
       - conditions: "{{ 'sc_' in trigger.id }}"
