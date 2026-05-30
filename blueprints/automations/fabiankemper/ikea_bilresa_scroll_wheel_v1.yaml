@@ -1,0 +1,288 @@
+blueprint:
+  name: IKEA Bilresa Scrollwheel - Custom Buttons & Brightness
+  description: |
+    A dedicated Brightness controller for the IKEA Bilresa Smart Scroll Wheel via Matter, featuring fully customizable button actions.
+
+    **Features:**
+    * Scrolling strictly adjusts brightness up or down.
+    * Define two custom brightness levels using the sliders below.
+    * Assign any action (Set Brightness 1, Set Brightness 2, Turn Off, Toggle, or None) to Single Click, Double Click, and Hold independently.
+
+    **REQUIREMENTS:**
+    1. **ENABLE** the Up Sensor (e.g., entity ending in `(1)`)
+    2. **ENABLE** the Down Sensor (e.g., entity ending in `(2)`)
+    3. **ENABLE** the Button Event (e.g., event entity ending in `(3)`)
+    4. **DISABLE** the Button Sensor (e.g., sensor entity ending in `(3)`). You only need the *Event*, keep the *Sensor* disabled to reduce network traffic!
+  domain: automation
+  input:
+    light_entity:
+      name: Light (or Group)
+      selector:
+        entity:
+          domain:
+            - light
+          reorder: false
+          multiple: false
+    step_pct:
+      name: "Scroll Step Size (%)"
+      description: 'How much the brightness changes per scroll "tick".'
+      default: 10
+      selector:
+        number:
+          min: 1.0
+          max: 50.0
+          unit_of_measurement: "%"
+          step: 1.0
+          mode: slider
+    val_b1:
+      name: "Brightness 1 (%)"
+      description: "Define your first custom brightness level."
+      default: 80
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: "%"
+          step: 1.0
+          mode: slider
+    val_b2:
+      name: "Brightness 2 (%)"
+      description: "Define your second custom brightness level."
+      default: 20
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: "%"
+          step: 1.0
+          mode: slider
+    btn_single:
+      name: "Action: Single Click"
+      default: toggle
+      selector:
+        select:
+          options:
+            - label: Set to Brightness 1
+              value: set_b1
+            - label: Set to Brightness 2
+              value: set_b2
+            - label: Toggle On/Off
+              value: toggle
+            - label: Turn Off
+              value: turn_off
+            - label: No Action
+              value: none
+          sort: false
+          multiple: false
+    btn_double:
+      name: "Action: Double Click"
+      default: set_b1
+      selector:
+        select:
+          options:
+            - label: Set to Brightness 1
+              value: set_b1
+            - label: Set to Brightness 2
+              value: set_b2
+            - label: Toggle On/Off
+              value: toggle
+            - label: Turn Off
+              value: turn_off
+            - label: No Action
+              value: none
+          sort: false
+          multiple: false
+    btn_hold:
+      name: "Action: Hold"
+      default: set_b2
+      selector:
+        select:
+          options:
+            - label: Set to Brightness 1
+              value: set_b1
+            - label: Set to Brightness 2
+              value: set_b2
+            - label: Toggle On/Off
+              value: toggle
+            - label: Turn Off
+              value: turn_off
+            - label: No Action
+              value: none
+          sort: false
+          multiple: false
+    sensor_up:
+      name: Scroll Up Sensor
+      description: "For Page 1: Look for '(1)'. For Page 2: '(4)'. For Page 3: '(7)'"
+      selector:
+        entity:
+          domain:
+            - sensor
+          reorder: false
+          multiple: false
+    sensor_down:
+      name: Scroll Down Sensor
+      description: "For Page 1: Look for '(2)'. For Page 2: '(5)'. For Page 3: '(8)'"
+      selector:
+        entity:
+          domain:
+            - sensor
+          reorder: false
+          multiple: false
+    event_button:
+      name: Button Event
+      description: "For Page 1: Look for '(3)'. For Page 2: '(6)'. For Page 3: '(9)'"
+      selector:
+        entity:
+          domain:
+            - event
+          reorder: false
+          multiple: false
+mode: queued
+max: 10
+max_exceeded: silent
+variables:
+  target_light: !input light_entity
+  s_p: !input step_pct
+  v_b1: !input val_b1
+  v_b2: !input val_b2
+  a_single: !input btn_single
+  a_double: !input btn_double
+  a_hold: !input btn_hold
+triggers:
+  - trigger: state
+    entity_id: !input sensor_up
+    id: sc_up
+  - trigger: state
+    entity_id: !input sensor_down
+    id: sc_down
+  - trigger: state
+    entity_id: !input event_button
+    id: btn_event
+conditions:
+  - condition: template
+    value_template: "{{ trigger.from_state is defined and trigger.to_state is defined and trigger.from_state.state not in ['unknown', 'unavailable'] and trigger.to_state.state not in ['unknown', 'unavailable'] }}"
+actions:
+  - choose:
+      - conditions: "{{ 'sc_' in trigger.id }}"
+        sequence:
+          - variables:
+              direction: "{% if trigger.id == 'sc_up' %} 1 {% else %} -1 {% endif %}"
+          - action: light.turn_on
+            target:
+              entity_id: "{{ target_light }}"
+            data:
+              brightness_step_pct: "{{ (s_p | float(default=10)) * direction }}"
+              transition: 0
+  - choose:
+      - conditions: "{{ trigger.id == 'btn_event' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ trigger.to_state.attributes.event_type is defined and trigger.to_state.attributes.event_type == 'multi_press_1' }}"
+                sequence:
+                  - variables:
+                      action_code: "{{ a_single }}"
+                  - choose:
+                      - conditions: "{{ action_code == 'set_b1' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b1 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'set_b2' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b2 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'turn_off' }}"
+                        sequence:
+                          - action: light.turn_off
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'toggle' }}"
+                        sequence:
+                          - action: light.toggle
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+          - choose:
+              - conditions: "{{ trigger.to_state.attributes.event_type is defined and trigger.to_state.attributes.event_type == 'multi_press_2' }}"
+                sequence:
+                  - variables:
+                      action_code: "{{ a_double }}"
+                  - choose:
+                      - conditions: "{{ action_code == 'set_b1' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b1 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'set_b2' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b2 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'turn_off' }}"
+                        sequence:
+                          - action: light.turn_off
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'toggle' }}"
+                        sequence:
+                          - action: light.toggle
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+          - choose:
+              - conditions: "{{ trigger.to_state.attributes.event_type is defined and trigger.to_state.attributes.event_type == 'long_press' }}"
+                sequence:
+                  - variables:
+                      action_code: "{{ a_hold }}"
+                  - choose:
+                      - conditions: "{{ action_code == 'set_b1' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b1 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'set_b2' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              brightness_pct: "{{ v_b2 }}"
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'turn_off' }}"
+                        sequence:
+                          - action: light.turn_off
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+                      - conditions: "{{ action_code == 'toggle' }}"
+                        sequence:
+                          - action: light.toggle
+                            target:
+                              entity_id: "{{ target_light }}"
+                            data:
+                              transition: 0.5
+  - delay:
+      milliseconds: 50
