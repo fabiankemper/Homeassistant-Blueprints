@@ -1,7 +1,7 @@
 blueprint:
   name: IKEA Bilresa Scrollwheel - Fast updates
   description: |
-    A zero-lag Brightness controller for the IKEA Bilresa Smart Scroll Wheel. 
+    A fast Brightness controller for the IKEA Bilresa Smart Scroll Wheel. 
     Instead of directly commanding the light on every tick, the scroll wheel instantly updates a Helper entity, while buttons control the light and sync the helper.
 
     **SETUP INSTRUCTIONS:**
@@ -10,8 +10,8 @@ blueprint:
 
     ```yaml
     input_number:
-      bilresa_helper:
-        name: "Bilresa Brightness Helper"
+      YOUR_HELPER:
+        name: "Brightness Helper"
         min: 0
         max: 100
         step: 1
@@ -24,12 +24,18 @@ blueprint:
     **4. Create the Link Automation:** You must create a separate standard automation to link the Helper to the Light.
 
     ```yaml
-    alias: "Link: Bilresa Helper to Light"
-    mode: single
-    trigger:
+    alias: "Link: YOUR_LIGHT to YOUR_HELPER"
+    description: Connect the helper brightness value to the lamp.
+    triggers:
       - trigger: state
-        entity_id: input_number.bilresa_helper
-    action:
+        entity_id:
+          - input_number.YOUR_HELPER
+    actions:
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 50
       - choose:
           - conditions:
               - condition: template
@@ -37,18 +43,14 @@ blueprint:
             sequence:
               - action: light.turn_off
                 target:
-                  entity_id: light.your_light
-                data:
-                  transition: 0.2
+                  entity_id: light.YOUR_LIGHT
         default:
           - action: light.turn_on
             target:
-              entity_id: light.your_light
+              entity_id: light.YOUR_LIGHT
             data:
               brightness_pct: "{{ trigger.to_state.state | int }}"
-              transition: 0.2
-      - delay:
-          milliseconds: 200
+    mode: restart
     ```
 
     You can the the same for the other two pages. Just swap (1) -> (4)/(7), (2) -> (5)/(8), (3) -> (6)/(9)
