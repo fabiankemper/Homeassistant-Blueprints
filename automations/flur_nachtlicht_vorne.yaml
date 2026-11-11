@@ -1,0 +1,50 @@
+alias: Flur Nachtlicht vorne
+description: >-
+  Schalte das Flurlicht durch Bewegung an, wenn es nicht an ist. Schalte es aus,
+  wenn eine Minute keine Bewegung erkannt wurde. Brich diese Sequenz ab, wenn
+  das Licht manuell (App/Dashboard/Sprache) verändert wird.
+triggers:
+  - trigger: state
+    entity_id:
+      - binary_sensor.bewegungsmelder_flur_vorne_occupancy
+    from: "off"
+    to: "on"
+conditions:
+  - condition: state
+    entity_id: light.flur_lampe
+    state: "off"
+  - condition: state
+    entity_id: sun.sun
+    state: below_horizon
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.flur_lampe
+    data:
+      brightness_pct: 10
+      transition: 0.5
+  - wait_for_trigger:
+      # Keine Bewegung mehr seit 1 Minute
+      - trigger: state
+        entity_id: binary_sensor.bewegungsmelder_flur_vorne_occupancy
+        from: "on"
+        to: "off"
+        for:
+          minutes: 1
+        id: keine_bewegung
+      # Licht wurde von einem Benutzer verändert (App, Dashboard, Sprachassistent)
+      - trigger: template
+        value_template: >-
+          {{ states.light.flur_lampe.context.user_id is not none }}
+        id: manuell
+    timeout:
+      hours: 1
+  # Nur ausschalten, wenn nicht manuell eingegriffen wurde
+  - condition: template
+    value_template: "{{ wait.trigger is none or wait.trigger.id != 'manuell' }}"
+  - action: light.turn_off
+    target:
+      entity_id: light.flur_lampe
+    data:
+      transition: 0.5
+mode: single
