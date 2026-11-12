@@ -2,7 +2,7 @@ alias: Flur Nachtlicht vorne
 description: >-
   Schalte das Flurlicht durch Bewegung an, wenn es nicht an ist. Schalte es aus,
   wenn eine Minute keine Bewegung erkannt wurde. Brich diese Sequenz ab, wenn
-  das Licht manuell (App/Dashboard/Sprache) verändert wird.
+  das Licht von außen verändert wird (App/Dashboard/Sprache/Schalter/Taster).
 triggers:
   - trigger: state
     entity_id:
@@ -23,25 +23,36 @@ actions:
     data:
       brightness_pct: 10
       transition: 0.5
-  - wait_for_trigger:
-      # Keine Bewegung mehr seit 1 Minute
-      - trigger: state
-        entity_id: binary_sensor.bewegungsmelder_flur_vorne_occupancy
-        from: "on"
-        to: "off"
-        for:
-          minutes: 1
-        id: keine_bewegung
-      # Licht wurde von einem Benutzer verändert (App, Dashboard, Sprachassistent)
-      - trigger: template
-        value_template: >-
-          {{ states.light.flur_lampe.context.user_id is not none }}
-        id: manuell
-    timeout:
-      hours: 1
-  # Nur ausschalten, wenn nicht manuell eingegriffen wurde
+  # Warten bis keine Bewegung mehr ist oder das Licht von außen verändert wird.
+  # Zustandsänderungen der Lampe, die von dieser Automation selbst stammen
+  # (Rückmeldung des Geräts nach turn_on), tragen den Kontext dieses Laufs und
+  # werden ignoriert.
+  - repeat:
+      sequence:
+        - wait_for_trigger:
+            # Keine Bewegung mehr seit 1 Minute
+            - trigger: state
+              entity_id: binary_sensor.bewegungsmelder_flur_vorne_occupancy
+              to: "off"
+              for:
+                minutes: 1
+              id: no_motion
+            # Jede Änderung der Lampe (Zustand oder Attribute)
+            - trigger: state
+              entity_id: light.flur_lampe
+              id: light_changed
+          timeout:
+            hours: 1
+      until:
+        - condition: template
+          value_template: >-
+            {{ wait.trigger is none
+               or wait.trigger.id == 'no_motion'
+               or wait.trigger.to_state is none
+               or wait.trigger.to_state.context.id != context.id }}
+  # Nur ausschalten, wenn nicht von außen eingegriffen wurde
   - condition: template
-    value_template: "{{ wait.trigger is none or wait.trigger.id != 'manuell' }}"
+    value_template: "{{ wait.trigger is none or wait.trigger.id == 'no_motion' }}"
   - action: light.turn_off
     target:
       entity_id: light.flur_lampe
