@@ -1,0 +1,369 @@
+blueprint:
+  name: Alarm (Away) - Door sensors, Matter button & Wi-Fi presence
+  description: |
+    A simple "arm away" alarm built on the **Manual Alarm Control Panel**.
+
+    * **Door/window opened while armed:** the panel goes to *pending* (entry delay), then to *triggered*, and a notification is sent.
+    * **Two Matter buttons (big / small, e.g. IKEA Bilresa):** arm, disarm or toggle per button and press type.
+    * **Auto-arm (fallback):** arms when all presence entities have been away for some minutes **and** a door was opened shortly before. If phones drop off Wi-Fi at night, nobody opened a door, so nothing is armed.
+    * **Auto-disarm:** disarms when a presence entity comes home.
+    * **Optional:** notifications on arm/disarm.
+
+    Use router-based device trackers (FRITZ!Box, UniFi, ...) for presence. They need no GPS on the phone.
+    Note: phones often join Wi-Fi only after you are inside. If that takes longer than the entry delay, you get an alarm notification before the auto-disarm. Pressing the button disarms immediately.
+
+    **SETUP INSTRUCTIONS:**
+
+    **1. Create the alarm panel** in `configuration.yaml` and restart Home Assistant:
+
+    ```yaml
+    alarm_control_panel:
+      - platform: manual
+        name: Alarmanlage
+        unique_id: alarmanlage
+        code_arm_required: false
+        arming_time: 60          # exit delay: time to leave after arming
+        delay_time: 30           # entry delay: time to disarm after a door opened
+        trigger_time: 120        # how long the panel stays "triggered"
+        disarm_after_trigger: false
+        armed_home:              # unused by this blueprint, but available
+          arming_time: 0
+          delay_time: 0
+        disarmed:
+          trigger_time: 0        # door openings while disarmed never trigger
+    ```
+
+    **2. Matter buttons:** pick the *event* entity of each button (e.g. `event.bilresa_..._button_1` / `_button_2`).
+
+    **3. Disable** the old door / "nobody home" notification automations, so you don't get duplicate notifications.
+  domain: automation
+  input:
+    alarm_panel:
+      name: Alarm Panel
+      description: The Manual Alarm Control Panel from step 1.
+      selector:
+        entity:
+          domain:
+            - alarm_control_panel
+          multiple: false
+    door_sensors:
+      name: Door / Window Sensors
+      description: Opening one of these while armed triggers the alarm.
+      selector:
+        entity:
+          domain:
+            - binary_sensor
+          multiple: true
+    alarm_notify_devices:
+      name: "Alarm Notification: Devices"
+      description: Mobile app devices that receive the alarm notification.
+      selector:
+        device:
+          integration: mobile_app
+          multiple: true
+
+    button_big_section:
+      name: Big Button
+      icon: mdi:gesture-tap-button
+      input:
+        event_button_big:
+          name: Big Button Event Entity
+          description: The Matter event entity of the big button (e.g. IKEA Bilresa).
+          selector:
+            entity:
+              domain:
+                - event
+              multiple: false
+        big_single:
+          name: "Big Button: Single Press"
+          default: arm
+          selector: &btn_action
+            select:
+              options:
+                - label: Toggle (disarmed → arm, otherwise → disarm)
+                  value: toggle
+                - label: Arm (away)
+                  value: arm
+                - label: Disarm
+                  value: disarm
+                - label: No Action
+                  value: none
+              sort: false
+              multiple: false
+        big_double:
+          name: "Big Button: Double Press"
+          default: none
+          selector: *btn_action
+        big_hold:
+          name: "Big Button: Long Press"
+          default: none
+          selector: *btn_action
+
+    button_small_section:
+      name: Small Button
+      icon: mdi:gesture-tap-button
+      input:
+        event_button_small:
+          name: Small Button Event Entity
+          description: The Matter event entity of the small button.
+          selector:
+            entity:
+              domain:
+                - event
+              multiple: false
+        small_single:
+          name: "Small Button: Single Press"
+          default: disarm
+          selector: *btn_action
+        small_double:
+          name: "Small Button: Double Press"
+          default: none
+          selector: *btn_action
+        small_hold:
+          name: "Small Button: Long Press"
+          default: none
+          selector: *btn_action
+
+    presence_section:
+      name: Presence (auto-arm / auto-disarm)
+      icon: mdi:wifi
+      input:
+        presence_entities:
+          name: Presence Entities
+          description: >-
+            Device trackers (e.g. router-based) or persons. "home" means at home, "not_home" means away.
+          selector:
+            entity:
+              domain:
+                - device_tracker
+                - person
+              multiple: true
+        auto_arm:
+          name: Auto-arm when everyone left
+          default: true
+          selector:
+            boolean: {}
+        auto_arm_minutes:
+          name: Auto-arm after everyone was away for
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 120
+              step: 1
+              unit_of_measurement: min
+              mode: box
+        door_window_minutes:
+          name: Door must have been used within
+          description: >-
+            Auto-arm only happens if one of the door sensors changed within this time before
+            everyone was marked away (counted on top of the away time above). This protects against
+            phones dropping off Wi-Fi while you sleep.
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 120
+              step: 1
+              unit_of_measurement: min
+              mode: box
+        auto_disarm:
+          name: Auto-disarm when someone comes home
+          default: true
+          selector:
+            boolean: {}
+
+    notify_section:
+      name: Arm / Disarm Notifications (optional)
+      icon: mdi:bell-outline
+      collapsed: true
+      input:
+        arm_notify_devices:
+          name: "Arm/Disarm Notification: Devices"
+          description: Leave empty for no arm/disarm notifications.
+          default: []
+          selector:
+            device:
+              integration: mobile_app
+              multiple: true
+
+mode: queued
+max: 10
+max_exceeded: silent
+
+variables:
+  panel: !input alarm_panel
+  doors: !input door_sensors
+  alarm_devices: !input alarm_notify_devices
+  arm_devices: !input arm_notify_devices
+  presence: !input presence_entities
+  big_single: !input big_single
+  big_double: !input big_double
+  big_hold: !input big_hold
+  small_single: !input small_single
+  small_double: !input small_double
+  small_hold: !input small_hold
+  auto_arm_on: !input auto_arm
+  auto_arm_min: !input auto_arm_minutes
+  door_window_min: !input door_window_minutes
+  auto_disarm_on: !input auto_disarm
+
+triggers:
+  - trigger: state
+    entity_id: !input door_sensors
+    from: "off"
+    to: "on"
+    id: door_opened
+  - trigger: state
+    entity_id: !input event_button_big
+    id: button_big
+  - trigger: state
+    entity_id: !input event_button_small
+    id: button_small
+  - trigger: state
+    entity_id: !input presence_entities
+    to: not_home
+    for:
+      minutes: !input auto_arm_minutes
+    id: left
+  - trigger: state
+    entity_id: !input presence_entities
+    from: not_home
+    to: home
+    id: arrived
+  - trigger: state
+    entity_id: !input alarm_panel
+    to: triggered
+    id: panel_triggered
+  - trigger: state
+    entity_id: !input alarm_panel
+    to:
+      - armed_away
+      - disarmed
+    id: panel_changed
+
+actions:
+  - choose:
+      # Door opened while armed: start the entry delay (pending -> triggered)
+      - conditions:
+          - condition: trigger
+            id: door_opened
+          - condition: state
+            entity_id: !input alarm_panel
+            state:
+              - armed_away
+              - armed_home
+              - armed_night
+              - armed_vacation
+        sequence:
+          - action: alarm_control_panel.alarm_trigger
+            target:
+              entity_id: "{{ panel }}"
+
+      # Entry delay ran out: send the alarm notification
+      - conditions:
+          - condition: trigger
+            id: panel_triggered
+        sequence:
+          - variables:
+              door_name: >-
+                {% set d = expand(doors) | sort(attribute='last_changed', reverse=true) | first %}
+                {{ d.name if d else 'Eine Tür' }}
+          - action: notify.send_message
+            target:
+              device_id: "{{ alarm_devices }}"
+            data:
+              message: "Alarm! {{ door_name }} wurde geöffnet, während die Alarmanlage scharf ist!"
+
+      # Button press
+      - conditions:
+          - condition: trigger
+            id:
+              - button_big
+              - button_small
+          - condition: template
+            value_template: >-
+              {{ trigger.from_state is not none and trigger.to_state is not none
+                 and trigger.from_state.state not in ['unknown', 'unavailable']
+                 and trigger.to_state.state not in ['unknown', 'unavailable'] }}
+        sequence:
+          - variables:
+              event_type: "{{ trigger.to_state.attributes.event_type | default('') }}"
+              is_big: "{{ trigger.id == 'button_big' }}"
+              action_code: >-
+                {% if event_type == 'multi_press_1' %}{{ big_single if is_big else small_single }}
+                {% elif event_type == 'multi_press_2' %}{{ big_double if is_big else small_double }}
+                {% elif event_type == 'long_press' %}{{ big_hold if is_big else small_hold }}
+                {% else %}none{% endif %}
+              resolved: >-
+                {% if action_code == 'toggle' %}
+                  {{ 'arm' if is_state(panel, 'disarmed') else 'disarm' }}
+                {% else %}{{ action_code }}{% endif %}
+          - choose:
+              - conditions: "{{ resolved == 'arm' and is_state(panel, 'disarmed') }}"
+                sequence:
+                  - action: alarm_control_panel.alarm_arm_away
+                    target:
+                      entity_id: "{{ panel }}"
+              - conditions: "{{ resolved == 'disarm' and not is_state(panel, 'disarmed') }}"
+                sequence:
+                  - action: alarm_control_panel.alarm_disarm
+                    target:
+                      entity_id: "{{ panel }}"
+
+      # Everyone away for X minutes and a door was used recently: auto-arm
+      - conditions:
+          - condition: trigger
+            id: left
+          - condition: template
+            value_template: "{{ auto_arm_on }}"
+          - condition: state
+            entity_id: !input alarm_panel
+            state: disarmed
+          - condition: template
+            value_template: >-
+              {{ expand(presence) | rejectattr('state', 'eq', 'not_home') | list | count == 0 }}
+          - condition: template
+            value_template: >-
+              {% set cutoff = now() - timedelta(minutes=(auto_arm_min | int) + (door_window_min | int)) %}
+              {{ expand(doors) | selectattr('last_changed', 'gt', cutoff) | list | count > 0 }}
+        sequence:
+          - action: alarm_control_panel.alarm_arm_away
+            target:
+              entity_id: "{{ panel }}"
+
+      # Someone came home: auto-disarm
+      - conditions:
+          - condition: trigger
+            id: arrived
+          - condition: template
+            value_template: "{{ auto_disarm_on }}"
+          - condition: state
+            entity_id: !input alarm_panel
+            state:
+              - arming
+              - armed_away
+              - pending
+              - triggered
+        sequence:
+          - action: alarm_control_panel.alarm_disarm
+            target:
+              entity_id: "{{ panel }}"
+
+      # Optional arm/disarm notification
+      - conditions:
+          - condition: trigger
+            id: panel_changed
+          - condition: template
+            value_template: >-
+              {{ arm_devices | length > 0
+                 and trigger.from_state is not none
+                 and trigger.from_state.state not in ['unknown', 'unavailable'] }}
+        sequence:
+          - action: notify.send_message
+            target:
+              device_id: "{{ arm_devices }}"
+            data:
+              message: >-
+                {% if trigger.to_state.state == 'armed_away' %}Alarmanlage ist scharf.
+                {% else %}Alarmanlage ist deaktiviert.{% endif %}
