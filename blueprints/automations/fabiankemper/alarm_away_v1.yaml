@@ -4,7 +4,7 @@ blueprint:
     A simple "arm away" alarm built on the **Manual Alarm Control Panel**.
 
     * **Door/window opened while armed:** the panel goes to *pending* (entry delay), then to *triggered*, and a notification is sent.
-    * **Two Matter buttons (big / small, e.g. IKEA Bilresa):** arm, disarm or toggle per button and press type.
+    * **Two Matter buttons (big / small, e.g. IKEA Bilresa), optional:** arm, disarm or toggle per button and press type.
     * **Auto-arm (fallback):** arms when all presence entities have been away for some minutes **and** a door was opened shortly before. If phones drop off Wi-Fi at night, nobody opened a door, so nothing is armed.
     * **Auto-disarm:** disarms when a presence entity comes home.
     * **Optional:** notifications on arm/disarm.
@@ -33,7 +33,7 @@ blueprint:
           trigger_time: 0        # door openings while disarmed never trigger
     ```
 
-    **2. Matter buttons:** pick the *event* entity of each button (e.g. `event.bilresa_..._button_1` / `_button_2`).
+    **2. Matter buttons (optional):** pick the *event* entity of each button (e.g. `event.bilresa_..._button_1` / `_button_2`). Leave empty if you have none.
 
     **3. Disable** the old door / "nobody home" notification automations, so you don't get duplicate notifications.
   domain: automation
@@ -63,12 +63,14 @@ blueprint:
           multiple: true
 
     button_big_section:
-      name: Big Button
+      name: Big Button (optional)
       icon: mdi:gesture-tap-button
+      collapsed: true
       input:
         event_button_big:
           name: Big Button Event Entity
-          description: The Matter event entity of the big button (e.g. IKEA Bilresa).
+          description: (Optional) The Matter event entity of the big button (e.g. IKEA Bilresa).
+          default: []
           selector:
             entity:
               domain:
@@ -100,12 +102,14 @@ blueprint:
           selector: *btn_action
 
     button_small_section:
-      name: Small Button
+      name: Small Button (optional)
       icon: mdi:gesture-tap-button
+      collapsed: true
       input:
         event_button_small:
           name: Small Button Event Entity
-          description: The Matter event entity of the small button.
+          description: (Optional) The Matter event entity of the small button.
+          default: []
           selector:
             entity:
               domain:
