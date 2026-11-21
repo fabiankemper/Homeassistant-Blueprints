@@ -1,0 +1,249 @@
+blueprint:
+  name: Appliance Cycle - Started / Finished notification (power based)
+  description: |
+    Detects when a washing machine, dryer, dishwasher, ... **starts** and **finishes** based on
+    its power usage (e.g. a Zooz ZEN15 power switch) and tracks the state in an `input_select` helper.
+
+    * **Started:** power stays **above** the start threshold for some minutes → helper goes to *Running*.
+    * **Finished:** power stays **below** the stop threshold for some minutes → helper goes to *Finished*
+      and a notification with the runtime is sent.
+    * **Back to idle:** automatically after a configurable time in *Finished* (or on the next start).
+    * **Optional:** notification when a cycle starts.
+
+    Create one automation from this blueprint per appliance.
+
+    **SETUP INSTRUCTIONS:**
+
+    **1. Create a helper per appliance:** *Settings → Devices & Services → Helpers → Create Helper → Dropdown*,
+    e.g. name `Waschmaschine Status`, with exactly these three options (or change the option names
+    below in the "Helper Options" section to match yours):
+
+    * `Bereit`
+    * `Läuft`
+    * `Fertig`
+
+    **2. Pick the power sensor** of the ZEN15 (the one in **W**, e.g. `sensor.waschmaschine_electric_consumption_w`),
+    not the kWh sensor.
+
+    **3. Tune the thresholds:** look at the power history of one full cycle. Washing machines often
+    pause (soaking, rinsing) with almost 0 W. If you get a "finished" notification too early,
+    increase the *Stop Delay*.
+  domain: automation
+  input:
+    power_sensor:
+      name: Power Sensor
+      description: Power sensor of the plug (in W).
+      selector:
+        entity:
+          domain:
+            - sensor
+          device_class:
+            - power
+          multiple: false
+    state_helper:
+      name: Status Helper
+      description: The dropdown (input_select) helper from step 1.
+      selector:
+        entity:
+          domain:
+            - input_select
+          multiple: false
+    appliance_name:
+      name: Appliance Name
+      description: Used in the notifications, e.g. "Waschmaschine" or "Trockner".
+      default: Waschmaschine
+      selector:
+        text: {}
+    notify_devices:
+      name: Notification Devices
+      description: Mobile app devices that receive the notifications.
+      selector:
+        device:
+          integration: mobile_app
+          multiple: true
+    notify_on_start:
+      name: Notify when started
+      description: Also send a notification when a cycle starts.
+      default: false
+      selector:
+        boolean: {}
+
+    thresholds_section:
+      name: Thresholds
+      icon: mdi:flash
+      collapsed: true
+      input:
+        start_power:
+          name: Start Threshold
+          description: The cycle counts as started when power is above this value ...
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 500
+              step: 1
+              unit_of_measurement: W
+              mode: box
+        start_minutes:
+          name: Start Delay
+          description: ... for this long.
+          default: 2
+          selector:
+            number:
+              min: 0
+              max: 30
+              step: 1
+              unit_of_measurement: min
+              mode: box
+        stop_power:
+          name: Stop Threshold
+          description: The cycle counts as finished when power is below this value ...
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 500
+              step: 0.5
+              unit_of_measurement: W
+              mode: box
+        stop_minutes:
+          name: Stop Delay
+          description: >-
+            ... for this long. Washing machines: 5-10 min. Dryers with anti-crease
+            tumbling may need more.
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 60
+              step: 1
+              unit_of_measurement: min
+              mode: box
+        idle_timeout_hours:
+          name: Reset to idle after
+          description: >-
+            Set the helper back from "finished" to "idle" after this time. 0 = never
+            (it then only changes on the next start).
+          default: 4
+          selector:
+            number:
+              min: 0
+              max: 48
+              step: 1
+              unit_of_measurement: h
+              mode: box
+
+    options_section:
+      name: Helper Options
+      icon: mdi:form-dropdown
+      collapsed: true
+      input:
+        option_idle:
+          name: "Option: Idle"
+          default: Bereit
+          selector:
+            text: {}
+        option_running:
+          name: "Option: Running"
+          default: Läuft
+          selector:
+            text: {}
+        option_finished:
+          name: "Option: Finished"
+          default: Fertig
+          selector:
+            text: {}
+
+mode: queued
+max: 5
+max_exceeded: silent
+
+variables:
+  helper: !input state_helper
+  name: !input appliance_name
+  devices: !input notify_devices
+  notify_start: !input notify_on_start
+  idle_timeout: !input idle_timeout_hours
+  opt_idle: !input option_idle
+  opt_running: !input option_running
+  opt_finished: !input option_finished
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input power_sensor
+    above: !input start_power
+    for:
+      minutes: !input start_minutes
+    id: started
+  - trigger: numeric_state
+    entity_id: !input power_sensor
+    below: !input stop_power
+    for:
+      minutes: !input stop_minutes
+    id: finished
+  - trigger: state
+    entity_id: !input state_helper
+    to: !input option_finished
+    for:
+      hours: !input idle_timeout_hours
+    id: timeout
+
+actions:
+  - choose:
+      # Power above the start threshold long enough: cycle started
+      - conditions:
+          - condition: trigger
+            id: started
+          - condition: template
+            value_template: "{{ states(helper) != opt_running }}"
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ helper }}"
+            data:
+              option: "{{ opt_running }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_start and devices | length > 0 }}"
+            then:
+              - action: notify.send_message
+                target:
+                  device_id: "{{ devices }}"
+                data:
+                  message: "{{ name }} wurde gestartet."
+
+      # Power below the stop threshold long enough while running: cycle finished
+      - conditions:
+          - condition: trigger
+            id: finished
+          - condition: template
+            value_template: "{{ states(helper) == opt_running }}"
+        sequence:
+          - variables:
+              runtime: >-
+                {% set s = (now() - states[helper].last_changed).total_seconds() | int %}
+                {% set h = s // 3600 %}{% set m = (s % 3600) // 60 %}
+                {% if h > 0 %}{{ h }} h {% endif %}{{ m }} min
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ helper }}"
+            data:
+              option: "{{ opt_finished }}"
+          - action: notify.send_message
+            target:
+              device_id: "{{ devices }}"
+            data:
+              message: "{{ name }} ist fertig (Laufzeit {{ runtime | trim }})."
+
+      # Finished for a while: back to idle
+      - conditions:
+          - condition: trigger
+            id: timeout
+          - condition: template
+            value_template: "{{ idle_timeout | int > 0 }}"
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ helper }}"
+            data:
+              option: "{{ opt_idle }}"
