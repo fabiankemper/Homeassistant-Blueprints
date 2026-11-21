@@ -1,0 +1,15 @@
+# Mushroom Template Card (HACS) for the appliance_cycle_v1 blueprint.
+# Shows status + current power with a color / icon per state.
+type: custom:mushroom-template-card
+entity: input_select.trockner_status
+primary: Trockner
+secondary: >-
+  {{ states(entity) }} · {{ states('sensor.waschkeller_trockner_electric_consumption_w') | round(0) }} W
+icon: >-
+  {% set s = states(entity) %}
+  {{ 'mdi:tumble-dryer' if s == 'Läuft'
+     else 'mdi:tumble-dryer-alert' if s == 'Fertig'
+     else 'mdi:tumble-dryer-off' }}
+icon_color: >-
+  {% set s = states(entity) %}
+  {{ 'orange' if s == 'Läuft' else 'green' if s == 'Fertig' else 'grey' }}

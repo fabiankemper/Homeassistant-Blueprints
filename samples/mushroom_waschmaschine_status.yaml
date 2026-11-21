@@ -1,0 +1,15 @@
+# Mushroom Template Card (HACS) for the appliance_cycle_v1 blueprint.
+# Shows status + current power with a color / icon per state.
+type: custom:mushroom-template-card
+entity: input_select.waschmaschine_status
+primary: Waschmaschine
+secondary: >-
+  {{ states(entity) }} · {{ states('sensor.waschkeller_waschmaschine_electric_consumption_w') | round(0) }} W
+icon: >-
+  {% set s = states(entity) %}
+  {{ 'mdi:washing-machine' if s == 'Läuft'
+     else 'mdi:washing-machine-alert' if s == 'Fertig'
+     else 'mdi:washing-machine-off' }}
+icon_color: >-
+  {% set s = states(entity) %}
+  {{ 'blue' if s == 'Läuft' else 'green' if s == 'Fertig' else 'grey' }}
