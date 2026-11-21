@@ -39,5 +39,10 @@ else keeps the default Home Assistant look.
 - Variable names can change between frontend releases. If a colour doesn't
   apply, inspect the chart in your browser's DevTools and search the computed
   styles for `--energy-` / `--graph-color-` to get the current names.
+- With several sources of one type (e.g. many grid meters), HA colours them
+  from `energy-<type>-color-<index>`. If that isn't set, it darkens the base
+  colour per row, which fades to grey. The theme defines
+  `energy-grid-consumption-color-0` … `-35`. Other types (`solar`,
+  `battery-out`, …) take the same suffix if you need them.
 - Series beyond 36 use Home Assistant's built-in colours for those slots.
   To keep them on-palette, add more `graph-color-N` entries.

@@ -71,3 +71,48 @@ lieblingsmubs:
   graph-color-34: "#9C281E"  # red
   graph-color-35: "#C69408"  # yellow
   graph-color-36: "#0A8C49"  # green
+
+  # ---------------------------------------------------------------------------
+  # Energy sources table / usage graph: one colour per grid source
+  #
+  # With several grid sources, HA uses energy-grid-consumption-color-<index>
+  # (index starts at 0) if the theme defines it. Otherwise it darkens the base
+  # colour by a fixed step per index (light mode; brightens in dark mode),
+  # which fades to grey and black after a few rows. Same sequence as graph-color.
+  # ---------------------------------------------------------------------------
+  energy-grid-consumption-color-0: "#E74C3C"      # red
+  energy-grid-consumption-color-1: "#F1C40F"      # yellow
+  energy-grid-consumption-color-2: "#2ECC71"      # green
+  energy-grid-consumption-color-3: "#2AA198"      # cyan
+  energy-grid-consumption-color-4: "#3498DB"      # blue
+  energy-grid-consumption-color-5: "#9B59B6"      # magenta
+  energy-grid-consumption-color-6: "#1D8579"      # cyan
+  energy-grid-consumption-color-7: "#2479D0"      # blue
+  energy-grid-consumption-color-8: "#7D3EA0"      # magenta
+  energy-grid-consumption-color-9: "#C54133"      # red
+  energy-grid-consumption-color-10: "#EDB20A"     # yellow
+  energy-grid-consumption-color-11: "#27AE60"     # green
+  energy-grid-consumption-color-12: "#F48A01"     # orange
+  energy-grid-consumption-color-13: "#A8CB32"     # lime
+  energy-grid-consumption-color-14: "#03B78F"     # teal
+  energy-grid-consumption-color-15: "#149FB9"     # sky
+  energy-grid-consumption-color-16: "#7479D9"     # indigo
+  energy-grid-consumption-color-17: "#CB4C8B"     # pink
+  energy-grid-consumption-color-18: "#0A839D"     # sky
+  energy-grid-consumption-color-19: "#615BC3"     # indigo
+  energy-grid-consumption-color-20: "#AB3777"     # pink
+  energy-grid-consumption-color-21: "#E0790E"     # orange
+  energy-grid-consumption-color-22: "#9FB421"     # lime
+  energy-grid-consumption-color-23: "#099A75"     # teal
+  energy-grid-consumption-color-24: "#FB7765"     # red
+  energy-grid-consumption-color-25: "#FFE598"     # yellow
+  energy-grid-consumption-color-26: "#71E697"     # green
+  energy-grid-consumption-color-27: "#62BBB2"     # cyan
+  energy-grid-consumption-color-28: "#66B4EE"     # blue
+  energy-grid-consumption-color-29: "#B27ACA"     # magenta
+  energy-grid-consumption-color-30: "#05665C"     # cyan
+  energy-grid-consumption-color-31: "#0A5CA7"     # blue
+  energy-grid-consumption-color-32: "#5D257B"     # magenta
+  energy-grid-consumption-color-33: "#9C281E"     # red
+  energy-grid-consumption-color-34: "#C69408"     # yellow
+  energy-grid-consumption-color-35: "#0A8C49"     # green
