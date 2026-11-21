@@ -1,0 +1,73 @@
+# lieblingsmubs – Home Assistant theme
+#
+# Recolours the energy dashboard (/energy/electricity, gas, water) and every
+# chart that uses the general graph palette, based on the "lieblingsmubs"
+# terminal colour scheme (https://colors.fabiankemper.de/).
+#
+# Only colours are overridden; everything else falls back to the default
+# Home Assistant theme. Variable names are written without the leading "--".
+#
+# Setup: see the "Themes" section in README.md.
+
+lieblingsmubs:
+  # ---------------------------------------------------------------------------
+  # Energy dashboard: sources and flows
+  # ---------------------------------------------------------------------------
+  energy-grid-consumption-color: "#E74C3C"  # from grid      – red (bold)
+  energy-grid-return-color: "#9B59B6"       # to grid        – magenta (bold)
+  energy-solar-color: "#F1C40F"             # solar          – yellow (bold)
+  energy-non-fossil-color: "#27AE60"        # low-carbon     – green (normal)
+  energy-battery-out-color: "#3498DB"       # discharge      – blue (bold)
+  energy-battery-in-color: "#2AA198"        # charge         – cyan (bold)
+  energy-gas-color: "#C54133"               # gas            – red (normal)
+  energy-water-color: "#2479D0"             # water          – blue (normal)
+
+  # ---------------------------------------------------------------------------
+  # Graph palette: individual devices / series (bars in the electricity panel)
+  #
+  # 1-12 are the original palette colours, 13-36 are derived in OKLCH
+  # (in-between hues, plus lighter and darker variants of the base hues).
+  # Each block starts at a different hue, so neighbouring bars never share one.
+  # ---------------------------------------------------------------------------
+  # 1-6: bold (palette)
+  graph-color-1: "#E74C3C"   # red
+  graph-color-2: "#F1C40F"   # yellow
+  graph-color-3: "#2ECC71"   # green
+  graph-color-4: "#2AA198"   # cyan
+  graph-color-5: "#3498DB"   # blue
+  graph-color-6: "#9B59B6"   # magenta
+  # 7-12: normal (palette)
+  graph-color-7: "#1D8579"   # cyan
+  graph-color-8: "#2479D0"   # blue
+  graph-color-9: "#7D3EA0"   # magenta
+  graph-color-10: "#C54133"  # red
+  graph-color-11: "#EDB20A"  # yellow
+  graph-color-12: "#27AE60"  # green
+  # 13-18: in-between hues, bold
+  graph-color-13: "#F48A01"  # orange
+  graph-color-14: "#A8CB32"  # lime
+  graph-color-15: "#03B78F"  # teal
+  graph-color-16: "#149FB9"  # sky
+  graph-color-17: "#7479D9"  # indigo
+  graph-color-18: "#CB4C8B"  # pink
+  # 19-24: in-between hues, normal
+  graph-color-19: "#0A839D"  # sky
+  graph-color-20: "#615BC3"  # indigo
+  graph-color-21: "#AB3777"  # pink
+  graph-color-22: "#E0790E"  # orange
+  graph-color-23: "#9FB421"  # lime
+  graph-color-24: "#099A75"  # teal
+  # 25-30: light tints
+  graph-color-25: "#FB7765"  # red
+  graph-color-26: "#FFE598"  # yellow
+  graph-color-27: "#71E697"  # green
+  graph-color-28: "#62BBB2"  # cyan
+  graph-color-29: "#66B4EE"  # blue
+  graph-color-30: "#B27ACA"  # magenta
+  # 31-36: dark shades
+  graph-color-31: "#05665C"  # cyan
+  graph-color-32: "#0A5CA7"  # blue
+  graph-color-33: "#5D257B"  # magenta
+  graph-color-34: "#9C281E"  # red
+  graph-color-35: "#C69408"  # yellow
+  graph-color-36: "#0A8C49"  # green
